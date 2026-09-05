@@ -1,0 +1,18 @@
+Date: 2026-09-04
+Time: 10:00 AM - 11:30 AM
+Meeting: AI-Based Meeting Minutes Generator Project Review
+Attendees: Prof. Sarita Byagar (Guide), Mehnaz Ibrahim Shikalgar (Student 44), Dipika Subhash Tupat (Student 27), Rahul Verma (External Reviewer)
+
+[10:00] Prof. Sarita Byagar: Good morning team. Today we are reviewing the progress of the AI-Based Meeting Minutes Generator mini-project for S.Y. B.Sc. AI & ML. Mehnaz and Dipika, please present your updates.
+[10:05] Mehnaz Shikalgar: Thank you Ma'am. We have finalized the Product Requirements Document (PRD) and Technical Requirements Document (TRD). The pipeline comprises transcript ingestion, preprocessing, LLM summarization, structured extraction of action items, decisions, and discussion points, alongside a RAG layer for semantic search across past meetings.
+[10:15] Dipika Tupat: For the database, we chose SQLite for metadata and FAISS / vector embeddings for semantic search. We also added export modules for PDF and Word DOCX so users can immediately download official minutes.
+[10:25] Rahul Verma: How are you handling privacy and transcript preprocessing? What if a user uploads a messy transcript with overlapping speech and filler words?
+[10:30] Mehnaz Shikalgar: We built a dedicated transcript cleaner in Python that strips speaker noise, normalizes timestamp notations, and segments conversations by speaker turns. In addition, we ensure all meeting data stays local in SQLite and local vector store.
+[10:42] Prof. Sarita Byagar: Excellent. Let's make sure the action item extraction identifies responsible owners and strict deadlines. For example, if someone says 'Mehnaz will finalize testing by Friday', the system must flag owner as Mehnaz, deadline as Friday, and status as Pending.
+[10:55] Rahul Verma: Yes, and make sure you benchmark the generated summary against manual ground truth using relevance and extraction accuracy metrics.
+[11:10] Prof. Sarita Byagar: Let's finalize the action items for this week:
+Decision: The project architecture is approved. We will use Streamlit for the web application UI and support both Gemini and offline NLP fallback.
+Action Item: Mehnaz to complete RAG semantic search evaluation and similarity scoring by September 10, 2026.
+Action Item: Dipika to design the PDF and Word export templates with college formatting by September 8, 2026.
+Action Item: Mehnaz and Dipika to prepare the project presentation slides and submit the synopsis documentation by September 12, 2026.
+[11:30] Prof. Sarita Byagar: Meeting adjourned. Keep up the good work!

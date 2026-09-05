@@ -1,0 +1,153 @@
+Technical Requirements Document (TRD)AI-Based Meeting Minutes Generator from Transcripts
+
+1. Project Information
+Project Title
+AI-Based Meeting Minutes Generator from Transcripts
+Team Members
+1. Mehnaz Ibrahim Shikalgar – Roll No. 442. Dipika Subhash Tupat – Roll No. 27
+Class
+S.Y. B.Sc. (AI & ML)
+Guide/Mentor
+Prof. Sarita Byagar
+Academic Year
+2026–2027
+2. Technical Overview
+The system will be developed as a web-based AI application that accepts meeting transcripts, preprocesses the text, sends it to a Generative AI model, and generates structured meeting minutes. The system will also create embeddings of previous meeting records and store them in a vector database to support semantic search using RAG.
+3. Programming Language
+Python
+Python will be the primary programming language for the project. It will be used for:
+Transcript processing
+AI/LLM integration
+Text extraction
+RAG implementation
+Database operations
+Web application development
+PDF/Word generation
+4. Generative AI Requirements
+The system requires a Generative AI model capable of processing meeting transcripts and generating structured information.
+OpenAI API
+Anthropic Claude API
+Open-source LLM such as Llama
+Hugging Face
+5. AI Processing Requirements
+The LLM should generate summary, decisions, action items, and owner/deadline information.
+Meeting Transcript → LLM Processing → Summary / Decisions / Action Items → Owner + Deadline
+6. Framework and Library Requirements
+LangChain
+LLM integration
+Prompt management
+RAG pipeline
+Retrieval workflow
+Hugging Face Transformers
+Open-source AI models
+Transformer-based NLP processing
+Streamlit / Flask
+Web interface development
+Whisper
+Optional speech-to-text conversion
+7. Database Requirements
+7.1 Vector Database
+Proposed options: FAISS or ChromaDB. Used to store embeddings of previous meeting records and support semantic search.
+7.2 Metadata Database
+Proposed options: SQLite or PostgreSQL. Used to store meeting metadata and structured information.
+8. RAG Technical Requirements
+Past Meeting Records → Chunking → Embeddings → Vector Database → User Question → Similarity Search → Relevant Meeting Data → LLM → Final Answer
+9. Web Application Requirements
+Upload Module
+Upload transcript
+Submit transcript for processing
+Processing Module
+Preprocess transcript
+Send transcript to LLM
+Minutes Module
+Display summary
+Display discussion points
+Display decisions
+Display action items
+Display owners/deadlines
+Search Module
+Enter natural-language query
+Search previous meeting records
+Export Module
+Export minutes as PDF
+Export minutes as Word
+10. Hardware Requirements
+Standard laptop/PC
+Minimum 8 GB RAM
+Internet connection for API calls
+11. Software Requirements
+Python 3.10+
+VS Code
+Git
+LLM API access
+Required Python libraries
+12. Deployment Requirements
+Streamlit Cloud
+Render
+Localhost
+13. Security and Privacy Requirements
+Protect stored meeting records.
+Restrict unauthorized access.
+Handle confidential information carefully.
+Avoid exposing meeting data unnecessarily.
+14. Technical Limitations
+Real-time live transcription is not included in the initial version.
+Enterprise calendar integration is not included.
+Enterprise task-system integration is not included.
+Audio input through speech-to-text is an optional extension.
+15. Recommended Directory Structure
+AI-Meeting-Minutes-Generator/│├── app.py├── requirements.txt├── README.md├── .env├── .gitignore│├── data/│   ├── transcripts/│   ├── processed/│   └── meetings/│├── database/│   ├── metadata.db│   └── vector_store/│├── src/│   ├── preprocessing/│   │   └── transcript_cleaner.py│   ││   ├── llm/│   │   ├── model.py│   │   ├── summarizer.py│   │   └── prompts.py│   ││   ├── extraction/│   │   ├── discussion_points.py│   │   ├── decisions.py│   │   └── action_items.py│   ││   ├── rag/│   │   ├── embeddings.py│   │   ├── vector_store.py│   │   └── retriever.py│   ││   ├── database/│   │   └── database.py│   ││   ├── export/│   │   ├── pdf_export.py│   │   └── word_export.py│   ││   └── speech/│       └── whisper_transcription.py│├── ui/│   ├── upload.py│   ├── minutes.py│   ├── search.py│   └── export.py│├── outputs/│   ├── pdf/│   └── word/│└── tests/    ├── test_preprocessing.py    ├── test_llm.py    ├── test_extraction.py    ├── test_rag.py    └── test_database.py
+16. Directory Structure Explanation
+Folder/File
+Purpose
+app.py
+Main application entry point
+requirements.txt
+Python dependencies
+.env
+API/configuration variables
+data/transcripts/
+Uploaded transcripts
+data/processed/
+Cleaned transcripts
+data/meetings/
+Processed meeting records
+database/
+Database and vector-store files
+src/preprocessing/
+Transcript cleaning
+src/llm/
+LLM integration and summarization
+src/extraction/
+Decisions and action-item extraction
+src/rag/
+Embeddings and RAG search
+src/database/
+Database operations
+src/export/
+PDF/Word generation
+src/speech/
+Optional Whisper speech-to-text
+ui/
+Web interface
+outputs/
+Generated files
+tests/
+Testing
+17. Technical Data Flow
+TRANSCRIPT    ↓PRE-PROCESSING    ↓LLM / GenAI    ↓Summary + Decisions + Actions    ↓Structured Minutes    ├──→ Export PDF/Word    └──→ Store Database             ↓         Embeddings             ↓        Vector Store             ↓            RAG             ↓       Search Results
+18. Technical Success Criteria
+1. Run using Python 3.10+.
+2. Accept meeting transcripts.
+3. Preprocess transcript text.
+4. Connect to the selected LLM/API.
+5. Generate structured meeting minutes.
+6. Extract decisions and action items.
+7. Store meeting records.
+8. Generate and store embeddings.
+9. Perform semantic search using RAG.
+10. Provide a web interface.
+11. Generate PDF/Word output.
+12. Run successfully on a standard laptop/PC with the specified environment.
+19. Final Technology Stack
+Frontend / UI↓Streamlit / Flask↓Python↓LangChain↓LLM (OpenAI / Claude / Llama)↓RAG Pipeline↓FAISS / ChromaDB↓SQLite / PostgreSQL

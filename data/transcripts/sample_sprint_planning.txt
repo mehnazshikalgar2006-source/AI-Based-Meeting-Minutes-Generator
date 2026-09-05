@@ -1,0 +1,16 @@
+Date: 2026-09-02
+Time: 02:00 PM - 03:00 PM
+Meeting: Sprint 14 Planning - Fintech Mobile App
+Attendees: Alex Rivera (Product Manager), Sarah Chen (Lead Architect), Carlos Ortiz (Frontend Dev), Priya Nair (QA Lead)
+
+[14:00] Alex Rivera: Welcome everyone. Our main goal in Sprint 14 is finalizing the biometric authentication and payment receipt export features before the beta release.
+[14:08] Sarah Chen: On the backend side, the biometric token verification API is 80% ready. We need to integrate Apple FaceID and Android BiometricPrompt payloads. I can complete the backend endpoints by Wednesday.
+[14:18] Carlos Ortiz: The frontend biometric authentication screens are designed. I will connect them to Sarah's API endpoints as soon as they are deployed to staging.
+[14:26] Priya Nair: QA needs test devices across iOS 17 and Android 14. Also, we noticed race conditions when network drops during payment verification.
+[14:38] Alex Rivera: Good catch Priya. Decision: We will make biometric login optional during beta and prioritize network retry mechanisms for payments.
+[14:45] Sarah Chen: Agreed. I will implement exponential backoff on payment verification requests.
+[14:52] Alex Rivera: Let's summarize tasks:
+Action Item: Sarah Chen to finish biometric token endpoints and add exponential backoff retry by September 6, 2026.
+Action Item: Carlos Ortiz to wire frontend biometric prompts to staging API by September 8, 2026.
+Action Item: Priya Nair to execute regression test suite on Android and iOS devices by September 11, 2026.
+[15:00] Alex Rivera: Thanks team, let's ship this!

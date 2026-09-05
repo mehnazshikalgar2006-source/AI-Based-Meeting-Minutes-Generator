@@ -1,0 +1,191 @@
+PRODUCT REQUIREMENTS DOCUMENT (PRD)
+AI-Based Meeting Minutes Generator from Transcripts
+1. Product Information
+Project Title
+AI-Based Meeting Minutes Generator from Transcripts
+Team Members
+1. Mehnaz Ibrahim Shikalgar – Roll No. 442. Dipika Subhash Tupat – Roll No. 27
+Class/Division
+S.Y. B.Sc. (AI & ML)
+Guide/Mentor
+Prof. Sarita Byagar
+Academic Year
+2026–2027
+2. Product Overview
+The AI-Based Meeting Minutes Generator is a web-based application that automatically converts meeting transcripts into structured meeting minutes using Generative AI. The system accepts a meeting transcript as input and uses an LLM to generate a meeting summary, key discussion points, important decisions, action items, responsible persons/owners, and deadlines. The system also uses Retrieval-Augmented Generation (RAG) to allow users to search previous meeting records semantically.
+3. Problem Statement
+Preparing meeting minutes manually is time-consuming and can lead to missing important decisions, action items, and deadlines. Meeting records can also become difficult to search as their number increases. The proposed product addresses these problems by automatically generating structured meeting minutes and providing semantic search across historical meeting records.
+4. Product Goals
+Automatically summarize meeting transcripts.
+Extract important discussion points and decisions.
+Identify action items, owners, and deadlines where available.
+Store previous meeting records for future retrieval.
+Provide semantic search across historical meetings using RAG.
+Provide a simple web-based interface.
+Allow generated minutes to be exported as PDF or Word.
+Evaluate summary relevance and action-item extraction accuracy.
+5. Target Users
+Students
+Faculty members
+Small project teams
+Academic committees
+Corporate teams
+Consulting or legal teams
+6. Key Product Features
+6.1 Transcript Upload
+Users can upload a meeting transcript as input.
+6.2 Transcript Pre-processing
+The system cleans, segments, and prepares transcript text for AI processing.
+6.3 AI Meeting Summarization
+The LLM generates an abstractive summary focused on important meeting information.
+6.4 Key Discussion Extraction
+The system identifies important discussion points.
+6.5 Decision Extraction
+The system identifies important decisions made during the meeting.
+6.6 Action-Item Extraction
+The system identifies tasks and, when available, their owners and deadlines.
+6.7 Structured Minutes
+The generated output is organized into summary, discussion points, decisions, and action items.
+6.8 Meeting Archive
+Processed meeting records are stored for future retrieval.
+6.9 RAG Semantic Search
+Users can search previous meetings using natural-language queries.
+6.10 Web Interface
+Users can upload transcripts, generate minutes, view results, and search meetings.
+6.11 Export
+Generated minutes can be exported as PDF or Word documents.
+7. Functional Requirements
+ID
+Requirement
+FR-01
+The user shall be able to upload a meeting transcript.
+FR-02
+The system shall preprocess and clean the transcript.
+FR-03
+The system shall generate an abstractive meeting summary using an LLM.
+FR-04
+The system shall extract important discussion points.
+FR-05
+The system shall identify important decisions.
+FR-06
+The system shall identify action items.
+FR-07
+The system should identify responsible owners and deadlines when available.
+FR-08
+The system shall present the output as structured meeting minutes.
+FR-09
+The system shall store processed meeting records.
+FR-10
+The system shall create embeddings for historical meeting records.
+FR-11
+The system shall support semantic search using RAG.
+FR-12
+The web interface shall allow users to upload, view, and search meeting records.
+FR-13
+The system should allow PDF and Word export.
+FR-14
+The generated minutes should be reviewable before being treated as an official record.
+8. Non-Functional Requirements
+Category
+Requirement
+Performance
+The system should process normal-length transcripts within a reasonable amount of time.
+Usability
+The interface should be simple and easy to use.
+Reliability
+The system should provide consistent structured output for similar transcripts.
+Privacy
+Meeting records and transcripts should be protected from unauthorized access.
+Accuracy
+Summary and extracted action items should be evaluated against manually prepared minutes.
+Maintainability
+The application should use modular components so individual AI, database, or UI components can be updated.
+9. User Workflow
+User  ↓Upload Meeting Transcript  ↓Pre-processing  ↓LLM / Generative AI  ↓Summary + Discussion Points + Decisions + Action Items  ↓Structured Meeting Minutes  ├──→ View  ├──→ Export PDF/Word  └──→ Store Meeting Record              ↓          Embeddings              ↓        Vector Database              ↓             RAG              ↓      Semantic Search
+10. Product Output
+Output
+Description
+Meeting Summary
+Concise summary of the meeting.
+Discussion Points
+Important topics discussed.
+Key Decisions
+Important decisions made.
+Action Items
+Tasks identified from the meeting.
+Owners
+Responsible persons when available.
+Deadlines
+Task deadlines when available.
+Search Results
+Relevant information from previous meetings.
+Exported Minutes
+PDF or Word document.
+11. Technology Requirements
+Category
+Proposed Technology
+Programming Language
+Python
+Generative AI
+OpenAI / Anthropic Claude / Llama
+AI Platform
+Hugging Face
+Frameworks
+LangChain, Streamlit / Flask
+Speech-to-Text
+Whisper (optional)
+Vector Database
+FAISS / ChromaDB
+Metadata Database
+SQLite / PostgreSQL
+Deployment
+Streamlit Cloud / Render / Localhost
+12. Scope
+12.1 In Scope
+Text transcript processing
+Meeting summarization
+Discussion and decision extraction
+Action-item extraction
+Owner/deadline extraction where available
+Meeting storage
+RAG-based semantic search
+Web interface
+PDF/Word export
+12.2 Out of Scope for Initial Version
+Real-time live meeting transcription
+Enterprise calendar integration
+Enterprise task-management integration
+Audio input through speech-to-text may be added as an optional extension.
+13. Evaluation and Success Criteria
+The system accepts and processes meeting transcripts successfully.
+The generated summary represents the important meeting content.
+Important decisions are identified.
+Action items, owners, and deadlines are extracted where available.
+Relevant historical meetings can be retrieved using natural-language search.
+Generated minutes can be viewed and exported.
+The prototype demonstrates useful summary and action-item accuracy compared with manually prepared minutes.
+14. Risks and Mitigation
+Risk
+Mitigation
+Incorrect AI-generated information
+Human review before official use.
+Poor transcript quality
+Clean and preprocess transcripts.
+Missing action items
+Validate extracted action items.
+Sensitive meeting information
+Apply privacy and access controls.
+Poor search results
+Improve embeddings and retrieval process.
+API dependency
+Use suitable model/API alternatives.
+15. Ethical Considerations
+Meeting transcripts may contain sensitive or confidential information. The system should handle stored data carefully and restrict access. AI-generated minutes should be reviewed because LLMs may sometimes hallucinate, misrepresent statements, or omit important context. Generated minutes should therefore not automatically be treated as the official record without human verification.
+16. Expected Outcomes
+A working prototype that converts meeting transcripts into structured minutes.
+Sample generated meeting minutes.
+Semantic search across previous meeting records.
+Performance evaluation of summary relevance and action-item extraction.
+Project documentation and source-code repository.
+17. Conclusion
+The AI-Based Meeting Minutes Generator aims to reduce the time and effort required to prepare meeting minutes. By combining Generative AI, LLM-based summarization, embeddings, vector databases, and RAG, the system will transform unstructured meeting transcripts into useful, searchable, and structured records for students, faculty, and small teams.

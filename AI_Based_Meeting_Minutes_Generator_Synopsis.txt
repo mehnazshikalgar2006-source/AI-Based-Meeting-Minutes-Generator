@@ -1,0 +1,76 @@
+MINI PROJECT SYNOPSIS
+AI-Based Meeting Minutes Generator from Transcripts
+1. Project Information
+Project Title: AI-Based Meeting Minutes Generator from Transcripts
+Team Members: 1. Mehnaz Ibrahim Shikalgar – Roll No. 442. Dipika Subhash Tupat – Roll No. 27
+Class/Division: S.Y. B.Sc. (AI & ML)
+Guide/Mentor Name: Prof. Sarita Byagar
+Academic Year: 2026–2027
+Date of Submission: 6 August, 2026
+2. Introduction
+Generative AI, powered by large language models (LLMs), has transformed how unstructured text is processed, summarized, and made actionable. One recurring administrative burden in academic and corporate settings is the manual creation of meeting minutes—reviewing lengthy discussions and converting them into concise, structured records. Traditional rule-based text-processing methods struggle to capture context, differentiate key decisions from casual discussion, or infer action items and owners. A GenAI-based approach is well suited here because LLMs can understand conversational context, summarize abstractively rather than just extracting sentences, and adapt to varied meeting formats without retraining. This project proposes a tool that takes a raw meeting transcript as input and automatically generates structured minutes, including a summary, key decisions, and action items, using an LLM-driven pipeline enhanced with Retrieval-Augmented Generation (RAG) for searching past meeting records.
+3. Problem Statement
+Manually preparing meeting minutes is time-consuming, inconsistent across note-takers, and prone to missed action items or decisions. There is no easy way to search across the accumulated history of past meetings for specific discussions or commitments. This project aims to automatically generate accurate, structured meeting minutes from transcripts and enables semantic search across historical meeting records using a GenAI-based pipeline.
+4. Objectives
+To design and develop a meeting-minutes generation tool using an LLM (GenAI model) for abstractive summarization.
+To enable automatic extraction of key decisions, discussion points, and action items with owners and deadlines.
+To evaluate the tool's performance using accuracy of extracted action items and summary relevance, benchmarked against manually prepared minutes.
+To implement a Retrieval-Augmented Generation (RAG) layer for semantic search across past meeting records.
+To provide an accessible web-based user interface for uploading transcripts and viewing/exporting generated minutes.
+5. Scope of the Project
+The project will cover summarization and structured extraction from text transcripts of single meetings, along with semantic search across a growing archive of processed meetings. Audio input will be supported via speech-to-text conversion as an optional extension. The tool targets students, faculty, and small teams who need a lightweight way to document and search meeting outcomes. It will not cover real-time live transcription during an ongoing meeting or integration with enterprise calendar/task systems in the initial version—these are noted under Future Scope.
+6. Literature Survey / Existing Systems
+Sr. No.
+Existing Tool/Paper
+Key Feature / Limitation / Gap
+1
+Otter.ai
+Real-time transcription with basic auto-summary. Closed/proprietary, subscription-based, with limited customization of extraction logic.
+2
+Fireflies.ai
+Meeting recording, summary, and CRM integrations. No open access to underlying models; no cross-meeting semantic search for smaller teams.
+3
+Abstractive summarization research (BART, T5-based models)
+Strong general-purpose text summarization. Not tailored to conversational/meeting structure or action-item extraction.
+7. Proposed System / Methodology
+The tool accepts a meeting transcript as input, processes it through preprocessing and prompt-based LLM summarization, and produces structured minutes as output. Past meetings are embedded and stored in a vector database, enabling later semantic search via a RAG pipeline.
+User Input: Upload of transcript text (or audio, converted via speech-to-text).
+Pre-processing: Cleaning, segmenting, and optionally identifying speaker turns.
+GenAI Model / API Processing: LLM prompted to generate a summary, decisions list, and action items with owners/deadlines.
+Post-processing: Formatting the structured output and validating extracted action items.
+Retrieval Layer (RAG): Storing meeting embeddings and enabling natural-language search across past minutes.
+Output Delivery: Minutes displayed on a web UI and exportable as PDF/Word.
+8. Proposed Tools & Technologies
+Category
+Tool / Technology Proposed
+Programming Language(s)
+Python
+Generative AI Model / API
+OpenAI / Anthropic Claude API, or open-source LLM (e.g., Llama) via Hugging Face
+Frameworks / Libraries
+LangChain, Hugging Face Transformers, Streamlit/Flask, Whisper (speech-to-text)
+Database / Vector Store
+FAISS or ChromaDB for embeddings; SQLite/PostgreSQL for metadata
+Deployment Platform
+Streamlit Cloud / Render / localhosting
+9. System Requirements
+Hardware Requirements
+Software Requirements
+Standard laptop/PC (8GB+ RAM); internet connection for API calls
+Python 3.10+, VS Code, Git, LLM API access, required Python libraries
+10. Expected Outcomes
+A working prototype that converts meeting transcripts into structured minutes.
+Demonstrated functionality with sample transcripts and generated outputs.
+Performance evaluation report covering summary relevance and action-item extraction accuracy.
+Project documentation and source code repository.
+11. Applications / Real-World Relevance
+This tool can be applied in academic institutions for documenting committee or project meetings, in corporate settings for tracking decisions and follow-up tasks across teams, and in legal or consulting firms for summarizing client consultations and discussions into structured, reviewable records.
+12. Ethical Considerations & Limitations
+Meeting transcripts may contain sensitive or confidential information, so data handling must ensure privacy and restricted access to stored records. LLM-generated summaries can occasionally misrepresent statements or omit nuance (hallucination), so generated minutes should be reviewed before being treated as an official record. The system's accuracy is also dependent on transcript quality, particularly when derived from noisy audio via speech-to-text.
+13. References
+Lewis, P. et al., "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks," NeurIPS, 2020.
+Lewis, M. et al., "BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension," ACL, 2020.
+Radford, A. et al., "Robust Speech Recognition via Large-Scale Weak Supervision" (Whisper), OpenAI, 2022.
+Otter.ai official documentation.
+Fireflies.ai official documentation.
+Signature of Student: ______________________________

@@ -1,0 +1,142 @@
+FUNCTIONAL & TECHNICAL REQUIREMENTS DOCUMENT
+AI-Based Meeting Minutes Generator from Transcripts
+1. Project Information
+Project Title
+AI-Based Meeting Minutes Generator from Transcripts
+Team Members
+1. Mehnaz Ibrahim Shikalgar – Roll No. 442. Dipika Subhash Tupat – Roll No. 27
+Class/Division
+S.Y. B.Sc. (AI & ML)
+Guide/Mentor
+Prof. Sarita Byagar
+Academic Year
+2026–2027
+2. Functional Requirements Document
+The functional requirements define what the proposed system should do. They are derived from the synopsis, which describes transcript input, preprocessing, LLM summarization, structured extraction, RAG-based search, web UI, and PDF/Word output.
+Requirement
+Description
+FR-01 – Transcript Input
+The system shall accept a meeting transcript as input. Audio input may be supported as an optional extension through speech-to-text.
+FR-02 – Pre-processing
+The system shall clean and segment transcript text and may identify speaker turns.
+FR-03 – AI Summarization
+The system shall use an LLM/GenAI model to generate an abstractive meeting summary.
+FR-04 – Discussion Points
+The system shall extract important discussion points from the transcript.
+FR-05 – Decisions
+The system shall extract key decisions made during the meeting.
+FR-06 – Action Items
+The system shall extract action items and identify owners and deadlines when available.
+FR-07 – Post-processing
+The system shall format the generated information into structured meeting minutes and validate extracted action items.
+FR-08 – Meeting Storage
+The system shall store processed meeting records for later retrieval.
+FR-09 – Semantic Search
+The system shall support natural-language search across previous meeting records.
+FR-10 – RAG
+The system shall use a RAG layer with meeting embeddings and a vector database for semantic retrieval.
+FR-11 – Web Interface
+The system shall provide a web-based interface for uploading transcripts and viewing generated minutes.
+FR-12 – Export
+The system shall allow generated minutes to be exported as PDF/Word.
+FR-13 – Review
+Generated minutes should be reviewed before being treated as an official record.
+3. Functional Workflow
+User  ↓Upload Transcript  ↓Pre-processing  ↓LLM / GenAI Processing  ↓Summary + Decisions + Discussion Points + Action Items  ↓Structured Meeting Minutes  ├──→ View on Web UI  ├──→ Export PDF/Word  └──→ Store Meeting Record              ↓          Embeddings              ↓        Vector Database              ↓             RAG              ↓       Semantic Search
+4. Technical Requirements Document
+The technical requirements define the technologies, environment, architecture, storage, and deployment needed to implement the functional requirements.
+Category
+Technical Requirement
+Programming Language
+Python
+Generative AI Model/API
+OpenAI / Anthropic Claude API, or open-source LLM such as Llama via Hugging Face
+Frameworks/Libraries
+LangChain, Hugging Face Transformers, Streamlit/Flask, Whisper (speech-to-text)
+Vector Store
+FAISS or ChromaDB for embeddings
+Metadata Database
+SQLite or PostgreSQL
+Deployment
+Streamlit Cloud / Render / localhost
+Hardware
+Standard laptop/PC with 8GB+ RAM; internet connection for API calls
+Software
+Python 3.10+, VS Code, Git, LLM API access, required Python libraries
+5. Technical Architecture
+Web UI  ↓Transcript Input  ↓Python Application  ↓Pre-processing  ↓LangChain / LLM  ↓Structured Minutes  ├──→ PDF / Word  └──→ Metadata Database             ↓          Embeddings             ↓       FAISS / ChromaDB             ↓            RAG             ↓      Semantic Search
+6. Directory Structure
+AI-Meeting-Minutes-Generator/│├── app.py├── requirements.txt├── README.md├── .env├── .gitignore│├── data/│   ├── transcripts/│   ├── processed/│   └── meetings/│├── database/│   ├── metadata.db│   └── vector_store/│├── src/│   ├── preprocessing/│   │   └── transcript_cleaner.py│   ││   ├── llm/│   │   ├── model.py│   │   ├── summarizer.py│   │   └── prompts.py│   ││   ├── extraction/│   │   ├── discussion_points.py│   │   ├── decisions.py│   │   └── action_items.py│   ││   ├── rag/│   │   ├── embeddings.py│   │   ├── vector_store.py│   │   └── retriever.py│   ││   ├── database/│   │   └── database.py│   ││   ├── export/│   │   ├── pdf_export.py│   │   └── word_export.py│   ││   └── speech/│       └── whisper_transcription.py│├── ui/│   ├── upload.py│   ├── minutes.py│   ├── search.py│   └── export.py│├── outputs/│   ├── pdf/│   └── word/│└── tests/    ├── test_preprocessing.py    ├── test_llm.py    ├── test_extraction.py    ├── test_rag.py    └── test_database.py
+7. Directory Structure Explanation
+Folder/File
+Purpose
+app.py
+Main application entry point
+requirements.txt
+Python dependencies
+.env
+API/configuration variables
+data/transcripts/
+Uploaded meeting transcripts
+data/processed/
+Cleaned and preprocessed transcripts
+data/meetings/
+Processed meeting records
+database/
+Metadata database and vector-store files
+src/preprocessing/
+Transcript cleaning and segmentation
+src/llm/
+LLM connection, prompts, and summarization
+src/extraction/
+Discussion points, decisions, and action items
+src/rag/
+Embeddings, vector store, and retrieval
+src/database/
+Database operations
+src/export/
+PDF and Word generation
+src/speech/
+Optional Whisper speech-to-text
+ui/
+Web user-interface modules
+outputs/
+Generated PDF/Word files
+tests/
+Application tests
+8. Functional-to-Technical Mapping
+Functional Area
+Technical Location
+Transcript Upload
+ui/upload.py + data/transcripts/
+Pre-processing
+src/preprocessing/transcript_cleaner.py
+LLM Summarization
+src/llm/model.py + src/llm/summarizer.py
+Discussion/Decision/Action Extraction
+src/extraction/
+Meeting Storage
+src/database/ + database/metadata.db
+Embeddings
+src/rag/embeddings.py
+RAG Search
+src/rag/vector_store.py + retriever.py
+Web Interface
+ui/
+PDF/Word Export
+src/export/ + outputs/
+Testing
+tests/
+9. Security, Privacy and Limitations
+Meeting transcripts may contain sensitive or confidential information; data handling should ensure privacy and restricted access.
+LLM-generated summaries can misrepresent statements or omit nuance, so generated minutes should be reviewed before official use.
+System accuracy depends on transcript quality, especially when audio is converted through speech-to-text.
+Real-time live transcription and enterprise calendar/task integration are outside the initial version.
+10. Expected Technical Result
+A working prototype that converts meeting transcripts into structured minutes.
+Demonstrated functionality using sample transcripts and generated outputs.
+Performance evaluation covering summary relevance and action-item extraction accuracy.
+Semantic search across past meeting records using RAG.
+Project documentation and source-code repository.
+11. Source Basis
+This document is based on the uploaded Mini Project Synopsis, particularly its Objectives, Scope, Proposed System/Methodology, Proposed Tools & Technologies, System Requirements, Expected Outcomes, and Ethical Considerations & Limitations.
