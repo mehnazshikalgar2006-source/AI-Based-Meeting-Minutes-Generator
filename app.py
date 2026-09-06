@@ -176,7 +176,7 @@ def main():
         selected_provider_label = st.selectbox(
             "AI Inference Provider",
             options=provider_options,
-            index=0,
+            index=1,
             help="Switch between 100% offline rule-based NLP and cloud GenAI models."
         )
 
@@ -431,7 +431,7 @@ def render_dashboard_overview(db_manager: DatabaseManager, vector_store: Meeting
         - **Local SQLite Database:** All meeting metadata and action items stored securely in `database/metadata.db`.
         - **Semantic RAG Search:** Natural-language queries search historical meetings with similarity scores and citations.
         - **Dual Document Export:** Instant generation of styled PDF and `.docx` reports.
-        """)
+        """) 
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.info("💡 **Getting Started:** Go to the **Upload & Generate** tab to try one of the pre-loaded sample transcripts, or click **Semantic Search (RAG)** to search across pre-indexed meetings!")
