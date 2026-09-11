@@ -125,5 +125,44 @@ class TestExtraction(unittest.TestCase):
             self.assertNotIn(item["deadline"], ["TBD", "N/A", ""])
             self.assertTrue(len(item["task"]) >= 5)
 
+    def test_user_commitment_and_explanatory_text_stripping(self):
+        transcript = (
+            "Mehnaz: I will complete the transcript processing module by Friday because the sprint ends then.\n"
+            "Dipika: I promise to implement the UI layout by next Monday in order to present to the committee."
+        )
+        actions = self.action_extractor.extract(transcript)
+        self.assertEqual(len(actions), 2)
+
+        # First item
+        self.assertEqual(actions[0]["owner"], "Mehnaz")
+        self.assertEqual(actions[0]["task"], "Complete the transcript processing module")
+        self.assertEqual(actions[0]["deadline"], "Friday")
+        self.assertNotIn("because", actions[0]["task"].lower())
+
+        # Second item
+        self.assertEqual(actions[1]["owner"], "Dipika")
+        self.assertEqual(actions[1]["task"], "Implement the UI layout")
+        self.assertEqual(actions[1]["deadline"], "next Monday")
+        self.assertNotIn("in order to", actions[1]["task"].lower())
+
+    def test_discussion_extractor_ignores_metadata(self):
+        transcript = (
+            "Meeting: Quarterly Planning Session\n"
+            "Date: 2026-09-12\n"
+            "Attendees: Alice, Bob\n"
+            "Facilitator: Alice\n"
+            "Alice: We are migrating the database to cloud infrastructure.\n"
+            "Bob: The migration timeline is estimated at two weeks.\n"
+            "Meeting adjourned."
+        )
+        points = self.discussion_extractor.extract(transcript)
+        self.assertTrue(len(points) >= 1)
+        for p in points:
+            self.assertNotIn("Meeting: Quarterly", p)
+            self.assertNotIn("Attendees:", p)
+            self.assertNotIn("Date:", p)
+            self.assertNotIn("Facilitator:", p)
+            self.assertNotIn("Meeting adjourned", p)
+
 if __name__ == "__main__":
     unittest.main()

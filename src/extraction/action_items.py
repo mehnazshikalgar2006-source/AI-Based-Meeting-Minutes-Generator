@@ -19,23 +19,21 @@ class ActionItemsExtractor:
             re.compile(r'what are the action items', re.IGNORECASE),
         ]
 
+        NAME = r'(?:(?:Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s+)?[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*'
         self.owner_assignment_regex = re.compile(
-            r'^(?:(?:Action Item|Task|TODO|Action)\s*:\s*)?'
-            r'((?:(?:Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s+)?[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*'
-            r'(?:\s*(?:and|&|,)\s*(?:(?:Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s+)?[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*)*)'
-            r'\s+(?:to|will|must|shall|is assigned to|is to|should|needs to)\s+(.+)$',
-            re.IGNORECASE
+            r'^(?:[-*•\d\.\s]*(?:Action Item|Task|TODO|Action)\s*:\s*)?'
+            rf'({NAME}(?:\s*(?:and|&|,)\s*{NAME})*)'
+            r'\s+(?i:to|will|must|shall|is assigned to|is to|should|needs to)\s+(.+)$'
         )
 
         self.speaker_commitment_regex = re.compile(
-            r'^(?:I will|I\'ll|I can|I am going to|I\'m going to|I shall|I will take care of|I\'ll handle)\s+(.+)$',
+            r'^(?:I will|I\'ll|I can|I am going to|I\'m going to|I shall|I plan to|I intend to|I commit to|I promise to|I will take care of|I\'ll handle)\s+(.+)$',
             re.IGNORECASE
         )
 
         self.speaker_assignment_regex = re.compile(
-            r'^((?:(?:Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s+)?[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*(?:\s*(?:and|&|,)\s*(?:(?:Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s+)?[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*)*)'
-            r'(?:,\s*|\s+)(?:please|to|will|can you|should)\s+(.+)$',
-            re.IGNORECASE
+            rf'^({NAME}(?:\s*(?:and|&|,)\s*{NAME})*)'
+            r'(?:,\s*|\s+)(?i:please|to|will|can you|should)\s+(.+)$'
         )
 
         self.explicit_label_regex = re.compile(
@@ -57,6 +55,8 @@ class ActionItemsExtractor:
             r'(?:\b(?:by|due(?: on)?|deadline is|before|target date:?)\s+)?\b((?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?)\b',
             # Days of the week with optional modifiers & times
             r'\b(?:by|due(?: on)?|deadline is|before)\s+((?:next\s+|this\s+)?(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(?:\s+(?:morning|afternoon|evening|EOD|COB|close of business))?(?:\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?)\b',
+            # Stand-alone times: by 5 PM, by 5:00 PM, before 11:30 AM
+            r'\b(?:by|due(?: on)?|deadline is|before)\s+(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))\b',
             # Relative deadlines: tomorrow / today / tonight / end of week
             r'\b(?:by|due(?: on)?|deadline is|before)\s+((?:tomorrow|today|tonight)(?:\s+(?:morning|afternoon|evening|EOD|COB))?(?:\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?)\b',
             r'\b(?:by|due(?: on)?|deadline is|before)\s+((?:end of (?:the\s+)?(?:day|week|month|sprint))|(?:EOD|COB|close of business)(?:\s+(?:today|tomorrow|Friday))?)\b',
@@ -128,19 +128,28 @@ class ActionItemsExtractor:
                     spk_clean = re.sub(r'\s*\([^)]*\)', '', spk).strip()
                     stmt = sm.group(2).strip()
 
-                    cm = self.speaker_commitment_regex.match(stmt)
-                    if cm:
-                        is_action = True
-                        owner = spk_clean
-                        task_raw = cm.group(1).strip()
-                    else:
-                        asgn = self.speaker_assignment_regex.match(stmt)
-                        if asgn and not any(p.search(stmt) for p in self.meta_patterns):
-                            target_owner = asgn.group(1).strip()
-                            if attendees and any(target_owner.lower() in a.lower() for a in attendees):
-                                is_action = True
-                                owner = target_owner
-                                task_raw = asgn.group(2).strip()
+                    # Check each individual sentence for commitments to avoid absorbing surrounding discussion
+                    sentences = [s.strip() for s in re.split(r'(?<=[.?!])\s+', stmt) if s.strip()]
+                    for s in sentences:
+                        cm = self.speaker_commitment_regex.match(s)
+                        if cm and not any(p.search(s) for p in self.meta_patterns):
+                            is_action = True
+                            owner = spk_clean
+                            candidate = cm.group(1).strip()
+                            candidate = re.sub(r'\s+(?:because|so that|in order to|as long as|since)\s+.*$', '', candidate, flags=re.IGNORECASE).strip()
+                            task_raw = candidate
+                            break
+                        else:
+                            asgn = self.speaker_assignment_regex.match(s)
+                            if asgn and not any(p.search(s) for p in self.meta_patterns):
+                                target_owner = asgn.group(1).strip()
+                                if attendees and any(target_owner.lower() in a.lower() for a in attendees):
+                                    is_action = True
+                                    owner = target_owner
+                                    candidate = asgn.group(2).strip()
+                                    candidate = re.sub(r'\s+(?:because|so that|in order to|as long as|since)\s+.*$', '', candidate, flags=re.IGNORECASE).strip()
+                                    task_raw = candidate
+                                    break
 
             if is_action and task_raw:
                 # 2. Extract deadline from task_raw

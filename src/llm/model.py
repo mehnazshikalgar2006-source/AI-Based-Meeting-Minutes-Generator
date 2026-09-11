@@ -107,7 +107,7 @@ class LLMClient:
         if "Transcript:" in prompt:
             transcript = prompt.split("Transcript:", 1)[1].strip()
 
-        from src.preprocessing.transcript_cleaner import TranscriptCleaner
+        from src.preprocessing.transcript_cleaner import TranscriptCleaner, is_valid_attendee_name
         from src.extraction.action_items import ActionItemsExtractor
         from src.extraction.decisions import DecisionsExtractor
         from src.extraction.discussion_points import DiscussionExtractor
@@ -122,14 +122,14 @@ class LLMClient:
         turns = cleaner.parse_speaker_turns(transcript)
         for t in turns:
             spk = t.get("speaker", "").strip()
-            if spk and spk.lower() not in {'speaker', 'attendees', 'participants'} and len(spk) < 35:
+            if spk and is_valid_attendee_name(spk) and len(spk) < 35:
                 raw_attendees.append(spk)
 
         # Deduplicate attendees (merge short and full names)
         attendees = []
         for name in raw_attendees:
             clean_name = name.strip()
-            if not clean_name or clean_name.lower() in {'speaker', 'attendees', 'participants', 'everyone', 'all', 'person 1', 'person 2', 'facilitator'}:
+            if not is_valid_attendee_name(clean_name):
                 continue
             is_sub = False
             for i, existing in enumerate(attendees):

@@ -9,6 +9,38 @@ import io
 from typing import List, Dict, Any
 from src.utils.sanitizer import sanitize_text
 
+NON_ATTENDEE_TERMS = {
+    'meeting title', 'meeting', 'title', 'subject', 'topic', 'agenda', 'project',
+    'date', 'meeting date', 'date & time', 'date/time', 'time', 'duration', 'location',
+    'venue', 'room', 'facilitator', 'moderator', 'host', 'scribe', 'recorder',
+    'note taker', 'secretary', 'attendees', 'participants', 'members', 'present',
+    'absent', 'apologies', 'invitees', 'summary', 'executive summary', 'overview',
+    'discussion', 'discussion points', 'action item', 'action items', 'decisions',
+    'decision', 'task', 'tasks', 'todo', 'todos', 'notes', 'note', 'status',
+    'next steps', 'next meeting', 'person 1', 'person 2', 'person 3', 'person',
+    'speaker', 'team members', 'team lead', 'everyone', 'all', 'unassigned', 'tbd',
+    'n/a', 'none', 'unknown', '<name 1>', '<name 2>', '<actual date or today>',
+    '<actual meeting title>'
+}
+
+def is_valid_attendee_name(name: str) -> bool:
+    if not name or not isinstance(name, str):
+        return False
+    clean = re.sub(r'^[#*_\-\s]+|[#*_\-\s]+$', '', name).strip()
+    clean = re.sub(r'\s*\([^)]*\)', '', clean).strip()
+    low = clean.lower()
+    if not clean or len(clean) < 2 or len(clean) > 40:
+        return False
+    if low in NON_ATTENDEE_TERMS:
+        return False
+    if any(low.startswith(term + ':') or low == term for term in NON_ATTENDEE_TERMS):
+        return False
+    if any(k in low for k in ['date:', 'time:', 'meeting:', 'http:', 'https:', 'action item:', 'decision:', 'attendees:']):
+        return False
+    if not re.search(r'[A-Za-z]', clean):
+        return False
+    return True
+
 class TranscriptCleaner:
     def __init__(self):
         self.fillers = [
@@ -54,7 +86,7 @@ class TranscriptCleaner:
                 elif clean_l.startswith(('-', '*', '•')) or re.match(r'^\d+\.', clean_l):
                     att = re.sub(r'^[-*•\d\.\s]+', '', clean_l).strip()
                     att_clean = re.sub(r'\s*\([^)]*\)', '', att).strip()
-                    if att_clean and att_clean not in metadata['attendees'] and len(att_clean) < 45:
+                    if is_valid_attendee_name(att_clean) and att_clean not in metadata['attendees'] and len(att_clean) < 45:
                         metadata['attendees'].append(att_clean)
                     continue
 
@@ -80,10 +112,16 @@ class TranscriptCleaner:
                     raw_list = re.split(r'[,;]', val)
                     for a in raw_list:
                         a_clean = re.sub(r'\s*\([^)]*\)', '', a).strip()
-                        if a_clean and a_clean not in metadata['attendees']:
+                        if is_valid_attendee_name(a_clean) and a_clean not in metadata['attendees']:
                             metadata['attendees'].append(a_clean)
                 else:
                     collecting_attendees = True
+            elif lower.startswith(('facilitator:', 'moderator:', 'host:', 'scribe:', 'recorder:')):
+                val = clean_l.split(':', 1)[1].strip()
+                val = re.sub(r'^[*_]+|[*_]+$', '', val).strip()
+                a_clean = re.sub(r'\s*\([^)]*\)', '', val).strip()
+                if is_valid_attendee_name(a_clean) and a_clean not in metadata['attendees']:
+                    metadata['attendees'].append(a_clean)
 
         # Fallback date detection if not matched via explicit prefix
         if not metadata['date']:
@@ -123,14 +161,11 @@ class TranscriptCleaner:
         turns = []
         current_turn = None
         skip_prefixes = [
-            'date:', 'time:', 'meeting:', 'subject:', 'topic:', 'title:',
-            'attendees:', 'participants:', 'members:', 'present:', 'agenda:'
+            'date:', 'time:', 'meeting:', 'subject:', 'topic:', 'title:', 'meeting title:', 'meeting name:',
+            'attendees:', 'participants:', 'members:', 'present:', 'agenda:',
+            'facilitator:', 'moderator:', 'host:', 'scribe:', 'recorder:', 'secretary:',
+            'location:', 'venue:', 'room:', 'status:'
         ]
-        non_speaker_names = {
-            'action item', 'action items', 'decision', 'decisions', 'note', 'notes',
-            'attendees', 'participants', 'members', 'present', 'agenda', 'summary',
-            'executive summary', 'task', 'tasks', 'todo'
-        }
         for line in lines:
             line = line.strip()
             if not line:
@@ -146,7 +181,7 @@ class TranscriptCleaner:
                 statement = match.group(3).strip()
                 speaker_clean = re.sub(r'^[*_\-\s]+|[*_\-\s]+$', '', speaker).strip()
                 speaker_clean = re.sub(r'\s*\([^)]*\)', '', speaker_clean).strip()
-                if len(speaker_clean) < 40 and speaker_clean.lower() not in non_speaker_names and not speaker_clean.lower().startswith(('action item', 'decision', 'note')):
+                if len(speaker_clean) < 40 and is_valid_attendee_name(speaker_clean) and not speaker_clean.lower().startswith(('action item', 'decision', 'note')):
                     if current_turn:
                         turns.append(current_turn)
                     current_turn = {"timestamp": timestamp, "speaker": speaker_clean, "statement": statement}

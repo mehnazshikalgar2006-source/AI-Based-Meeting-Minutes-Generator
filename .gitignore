@@ -28,6 +28,7 @@ outputs/pdf/*.pdf
 outputs/word/*.docx
 !outputs/pdf/.gitkeep
 !outputs/word/.gitkeep
+exports/
 
 # Streamlit runtime
 .streamlit/

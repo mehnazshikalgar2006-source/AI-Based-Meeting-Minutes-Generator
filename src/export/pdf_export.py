@@ -214,7 +214,7 @@ class PDFExporter:
                     Paragraph(item.get('status', 'Pending'), table_cell_style)
                 ])
 
-            action_table = Table(table_data, colWidths=[210, 85, 85, 75, 75])
+            action_table = Table(table_data, colWidths=[200, 105, 105, 60, 60])
             action_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), primary_color),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),

@@ -6,7 +6,7 @@ Coordinates preprocessing, LLM extraction, and deterministic validation to retur
 import json
 import re
 from typing import Dict, Any, List
-from src.preprocessing.transcript_cleaner import TranscriptCleaner
+from src.preprocessing.transcript_cleaner import TranscriptCleaner, is_valid_attendee_name
 from src.extraction.action_items import ActionItemsExtractor
 from src.extraction.decisions import DecisionsExtractor
 from src.llm.model import LLMClient
@@ -94,20 +94,20 @@ class MeetingSummarizer:
     def _reconcile_attendees(self, current_attendees: List[str], meta_attendees: List[str], speaker_turns: List[Dict[str, str]]) -> List[str]:
         raw_list = []
         for a in current_attendees:
-            if a.strip().lower() not in PLACEHOLDER_NAMES:
+            if is_valid_attendee_name(a):
                 raw_list.append(a.strip())
         for a in meta_attendees:
-            if a.strip().lower() not in PLACEHOLDER_NAMES:
+            if is_valid_attendee_name(a):
                 raw_list.append(a.strip())
         for t in speaker_turns:
             spk = t.get("speaker", "").strip()
-            if spk and spk.lower() not in PLACEHOLDER_NAMES and len(spk) < 35:
+            if spk and is_valid_attendee_name(spk) and len(spk) < 35:
                 raw_list.append(spk)
 
         unique = []
         for name in raw_list:
             clean = re.sub(r'\s*\([^)]*\)', '', name).strip()
-            if not clean or clean.lower() in PLACEHOLDER_NAMES:
+            if not is_valid_attendee_name(clean):
                 continue
             is_sub = False
             for i, existing in enumerate(unique):
@@ -191,9 +191,30 @@ class MeetingSummarizer:
                 reconciled.append(r_item)
 
         if not reconciled and rule_items:
-            return rule_items
+            reconciled = rule_items
 
-        return reconciled
+        # Deduplicate and merge overlapping tasks for the same owner, prioritizing specific deadlines over TBD
+        STOP_WORDS = {'the', 'a', 'an', 'to', 'for', 'in', 'on', 'of', 'and', 'with', 'as', 'is', 'are', 'by'}
+        final_items = []
+        for item in reconciled:
+            task_words = set(re.findall(r'\w+', item['task'].lower())) - STOP_WORDS
+            owner = item['owner'].lower()
+            merged = False
+            for i, existing in enumerate(final_items):
+                if existing['owner'].lower() == owner or existing['owner'].lower() in owner or owner in existing['owner'].lower():
+                    exist_words = set(re.findall(r'\w+', existing['task'].lower())) - STOP_WORDS
+                    overlap = len(task_words & exist_words)
+                    if overlap >= 2:
+                        merged = True
+                        if existing['deadline'] in ['TBD', 'N/A', ''] and item['deadline'] not in ['TBD', 'N/A', '']:
+                            final_items[i] = item
+                        elif len(item['task']) > len(existing['task']) and item['deadline'] not in ['TBD', 'N/A', '']:
+                            final_items[i] = item
+                        break
+            if not merged:
+                final_items.append(item)
+
+        return final_items
 
     def _clean_and_parse_json(self, raw_response: str) -> Dict[str, Any]:
         text = raw_response.strip()
