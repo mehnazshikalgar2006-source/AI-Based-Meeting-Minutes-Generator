@@ -225,7 +225,7 @@ def main():
                 placeholder="Paste key to save or update..." if not env_key else "Paste new key to update...",
                 help="Key is stored strictly server-side in .env and is never displayed."
             )
-            model_name = st.selectbox("Gemini Model", options=["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"], index=0)
+            model_name = st.selectbox("Gemini Model", options=["gemini-3.6-flash", "gemini-1.5-flash", "gemini-2.5-flash"], index=0)
 
             # Effective API key resolution strictly on backend
             api_key = new_key_input.strip() if new_key_input.strip() else env_key
