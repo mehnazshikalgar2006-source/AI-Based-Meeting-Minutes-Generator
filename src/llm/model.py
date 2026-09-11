@@ -26,7 +26,7 @@ class LLMClient:
             try:
                 from google import genai
                 client = genai.Client(api_key=self.api_key.strip())
-                m = self.model_name or "gemini-2.0-flash"
+                m = self.model_name or "gemini-3.6-flash"
                 full_prompt = f"{safe_system}\n\n{safe_prompt}" if safe_system else safe_prompt
                 response = client.models.generate_content(
                     model=m,
