@@ -173,10 +173,22 @@ def main():
             "Google Gemini (Cloud GenAI)",
             "OpenAI (Cloud LLM)"
         ]
+
+        # Check if GEMINI_API_KEY is configured in env or Streamlit secrets
+        has_gemini_key = bool(os.getenv("GEMINI_API_KEY", "").strip())
+        if not has_gemini_key:
+            try:
+                if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+                    has_gemini_key = bool(str(st.secrets["GEMINI_API_KEY"]).strip())
+            except Exception:
+                has_gemini_key = False
+
+        default_provider_index = 1 if has_gemini_key else 0
+
         selected_provider_label = st.selectbox(
             "AI Inference Provider",
             options=provider_options,
-            index=1,
+            index=default_provider_index,
             help="Switch between 100% offline rule-based NLP and cloud GenAI models."
         )
 
@@ -185,11 +197,17 @@ def main():
         if "Gemini" in selected_provider_label:
             provider = "gemini"
             env_key = os.getenv("GEMINI_API_KEY", "").strip()
+            if not env_key:
+                try:
+                    if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+                        env_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+                except Exception:
+                    pass
 
             if env_key:
                 st.markdown(
                     "<div style='background-color:#ecfdf5; border:1px solid #6ee7b7; padding:7px 12px; border-radius:6px; color:#065f46; font-size:12.5px; font-weight:600; margin-bottom:8px;'>"
-                    "🔒 Gemini API Key: Configured in .env (Masked)</div>",
+                    "🔒 Gemini API Key: Configured in Environment / Secrets (Masked)</div>",
                     unsafe_allow_html=True
                 )
             else:

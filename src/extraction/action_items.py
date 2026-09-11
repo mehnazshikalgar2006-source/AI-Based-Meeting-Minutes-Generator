@@ -1,67 +1,203 @@
-﻿"""
+"""
 Action Items Extraction Module
 Extracts action items, owners, deadlines, priorities, and status.
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import re
 
 class ActionItemsExtractor:
     def __init__(self):
-        self.deadline_patterns = [
-            r'by\s+([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-            r'by\s+([A-Za-z]+day(?:\s+morning|\s+afternoon|\s+evening)?)',
-            r'by\s+([A-Za-z]+\s+\d{1,2}(?:th|st|nd|rd)?)',
-            r'due\s+([A-Za-z]+\s+\d{1,2})',
-            r'deadline\s+is\s+([A-Za-z]+\s+\d{1,2})'
+        self.meta_patterns = [
+            re.compile(r'extraction of action items', re.IGNORECASE),
+            re.compile(r'action item extraction', re.IGNORECASE),
+            re.compile(r'identifies responsible owners', re.IGNORECASE),
+            re.compile(r'for example, if someone says', re.IGNORECASE),
+            re.compile(r'finalize the action items', re.IGNORECASE),
+            re.compile(r'review the action items', re.IGNORECASE),
+            re.compile(r'discuss action items', re.IGNORECASE),
+            re.compile(r'what are the action items', re.IGNORECASE),
         ]
 
-    def extract(self, text: str) -> List[Dict[str, Any]]:
+        self.owner_assignment_regex = re.compile(
+            r'^(?:(?:Action Item|Task|TODO|Action)\s*:\s*)?'
+            r'((?:(?:Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s+)?[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*'
+            r'(?:\s*(?:and|&|,)\s*(?:(?:Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s+)?[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*)*)'
+            r'\s+(?:to|will|must|shall|is assigned to|is to|should|needs to)\s+(.+)$',
+            re.IGNORECASE
+        )
+
+        self.speaker_commitment_regex = re.compile(
+            r'^(?:I will|I\'ll|I can|I am going to|I\'m going to|I shall|I will take care of|I\'ll handle)\s+(.+)$',
+            re.IGNORECASE
+        )
+
+        self.speaker_assignment_regex = re.compile(
+            r'^((?:(?:Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s+)?[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*(?:\s*(?:and|&|,)\s*(?:(?:Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s+)?[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*)*)'
+            r'(?:,\s*|\s+)(?:please|to|will|can you|should)\s+(.+)$',
+            re.IGNORECASE
+        )
+
+        self.explicit_label_regex = re.compile(
+            r'^[-*•\d\.\s]*(?:action item|action items|task|todo)\s*:\s*(.+)$',
+            re.IGNORECASE
+        )
+
+        self.deadline_patterns = [
+            # Labeled formats: (Deadline: Wednesday 5 PM) or Deadline: Sept 10
+            r'\((?:deadline|due|target date):\s*([^)]+)\)',
+            r'\[(?:deadline|due|target date):\s*([^\]]+)\]',
+            r'(?:deadline|due date|target date):\s*([A-Za-z0-9\s,\-\/]+?)(?:\.|$|;)',
+            # Full dates: September 10, 2026 / Sept 10, 2026
+            r'(?:\b(?:by|due(?: on)?|deadline is|before|target date:?)\s+)?\b((?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s*\d{4})\b',
+            # ISO and numeric dates: 2026-09-10 / 10/09/2026
+            r'(?:\b(?:by|due(?: on)?|deadline is|before|target date:?)\s+)?\b(\d{4}-\d{2}-\d{2})\b',
+            r'(?:\b(?:by|due(?: on)?|deadline is|before|target date:?)\s+)?\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b',
+            # Month & day without year: September 10th / Sept 10
+            r'(?:\b(?:by|due(?: on)?|deadline is|before|target date:?)\s+)?\b((?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?)\b',
+            # Days of the week with optional modifiers & times
+            r'\b(?:by|due(?: on)?|deadline is|before)\s+((?:next\s+|this\s+)?(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(?:\s+(?:morning|afternoon|evening|EOD|COB|close of business))?(?:\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?)\b',
+            # Relative deadlines: tomorrow / today / tonight / end of week
+            r'\b(?:by|due(?: on)?|deadline is|before)\s+((?:tomorrow|today|tonight)(?:\s+(?:morning|afternoon|evening|EOD|COB))?(?:\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?)\b',
+            r'\b(?:by|due(?: on)?|deadline is|before)\s+((?:end of (?:the\s+)?(?:day|week|month|sprint))|(?:EOD|COB|close of business)(?:\s+(?:today|tomorrow|Friday))?)\b',
+            r'\b(?:by|due(?: on)?|deadline is|before)\s+((?:the\s+)?next\s+(?:meeting|sprint|release|week))\b'
+        ]
+
+    def extract(self, text: str, attendees: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         lines = [l.strip() for l in text.split('\n') if l.strip()]
         action_items = []
+        seen_tasks = set()
+
+        # Pre-process speaker turns if present
+        speaker_turns = []
+        speaker_regex = re.compile(r'^(?:(?:\[|\()?\s*\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AaPp][Mm])?\s*(?:\]|\))?\s*)?([A-Za-z0-9\s\.\,\-\(\)\']+?):\s*(.*)$')
+        for l in lines:
+            sm = speaker_regex.match(l)
+            if sm:
+                spk = sm.group(1).strip()
+                stmt = sm.group(2).strip()
+                spk_clean = re.sub(r'\s*\([^)]*\)', '', spk).strip()
+                if not any(spk_clean.lower().startswith(k) for k in ['date', 'time', 'meeting', 'attendees', 'action', 'decision']):
+                    speaker_turns.append((spk_clean, stmt))
 
         for l in lines:
-            low = l.lower()
+            # 1. Skip lines that are conversational meta-discussions about action items
+            if any(p.search(l) for p in self.meta_patterns):
+                continue
+
+            clean_l = re.sub(r'^[#*_\-\s]+', '', l).strip()
+            if not clean_l:
+                continue
+
             is_action = False
-            task = l
+            task_raw = clean_l
             owner = "Unassigned"
             deadline = "TBD"
-            priority = "Medium"
 
-            if 'action item' in low or 'to do' in low or 'will finalize' in low or 'assigned to' in low or 'to complete' in low or 'to design' in low:
+            # Case A: Explicit line with Action Item / Task / TODO
+            label_match = self.explicit_label_regex.match(clean_l)
+            if label_match:
                 is_action = True
-                clean_l = re.sub(r'^(?:.*action item:?\s*)', '', l, flags=re.IGNORECASE).strip()
-                task = clean_l
+                content = label_match.group(1).strip()
+                assign_match = self.owner_assignment_regex.match(content)
+                if assign_match:
+                    owner = assign_match.group(1).strip()
+                    task_raw = assign_match.group(2).strip()
+                else:
+                    # Check for "Owner: Task" or "Owner - Task"
+                    colon_match = re.match(r'^([A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*(?:\s*(?:and|&|,)\s*[A-Z][a-zA-Z\']+(?:\s+[A-Z][a-zA-Z\']+)*)*)\s*[:-]\s*(.+)$', content)
+                    if colon_match:
+                        owner = colon_match.group(1).strip()
+                        task_raw = colon_match.group(2).strip()
+                    else:
+                        task_raw = content
 
-            owner_match = re.match(r'^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:to|will|must|is assigned to)\s+(.+)$', task)
-            if owner_match:
-                owner = owner_match.group(1).strip()
-                task = owner_match.group(2).strip()
-                is_action = True
+            # Case B: Direct assignment pattern (e.g. "Mehnaz and Dipika to prepare slides...")
+            if not is_action:
+                assign_match = self.owner_assignment_regex.match(clean_l)
+                if assign_match:
+                    is_action = True
+                    owner = assign_match.group(1).strip()
+                    task_raw = assign_match.group(2).strip()
 
-            for dp in self.deadline_patterns:
-                dm = re.search(dp, task, re.IGNORECASE)
-                if dm:
-                    deadline = dm.group(1).strip()
-                    break
+            # Case C: Dialogue statement commitments
+            if not is_action:
+                sm = speaker_regex.match(l)
+                if sm:
+                    spk = sm.group(1).strip()
+                    spk_clean = re.sub(r'\s*\([^)]*\)', '', spk).strip()
+                    stmt = sm.group(2).strip()
 
-            if is_action:
-                if 'critical' in task.lower() or 'urgent' in task.lower() or 'high' in task.lower():
+                    cm = self.speaker_commitment_regex.match(stmt)
+                    if cm:
+                        is_action = True
+                        owner = spk_clean
+                        task_raw = cm.group(1).strip()
+                    else:
+                        asgn = self.speaker_assignment_regex.match(stmt)
+                        if asgn and not any(p.search(stmt) for p in self.meta_patterns):
+                            target_owner = asgn.group(1).strip()
+                            if attendees and any(target_owner.lower() in a.lower() for a in attendees):
+                                is_action = True
+                                owner = target_owner
+                                task_raw = asgn.group(2).strip()
+
+            if is_action and task_raw:
+                # 2. Extract deadline from task_raw
+                matched_deadline = None
+                for dp in self.deadline_patterns:
+                    dm = re.search(dp, task_raw, re.IGNORECASE)
+                    if dm:
+                        matched_deadline = dm.group(1).strip()
+                        deadline = matched_deadline
+                        break
+
+                # 3. Clean task text by removing extracted deadline phrases
+                task_clean = task_raw
+                if matched_deadline:
+                    task_clean = re.sub(r'[\(\[]\s*(?:deadline|due|target date):?\s*' + re.escape(matched_deadline) + r'[\)\]]', '', task_clean, flags=re.IGNORECASE).strip()
+                    task_clean = re.sub(r'(?:,\s*)?(?:deadline|due date|target date):\s*' + re.escape(matched_deadline) + r'\.?$', '', task_clean, flags=re.IGNORECASE).strip()
+                    task_clean = re.sub(r'(?:,\s*)?(?:\b(?:by|due(?: on)?|deadline is|before|target date:?)\s+)?' + re.escape(matched_deadline) + r'\.?$', '', task_clean, flags=re.IGNORECASE).strip()
+
+                task_clean = task_clean.rstrip('.,; ').strip()
+                if task_clean:
+                    task_clean = task_clean[0].upper() + task_clean[1:]
+
+                # 4. Resolve owner if unassigned and attendee list is available
+                if owner == "Unassigned" and attendees:
+                    for att in attendees:
+                        if task_clean.lower().startswith(att.lower() + " to ") or task_clean.lower().startswith(att.lower() + " will "):
+                            owner = att
+                            task_clean = re.sub(r'^' + re.escape(att) + r'\s+(?:to|will)\s+', '', task_clean, flags=re.IGNORECASE).strip()
+                            if task_clean:
+                                task_clean = task_clean[0].upper() + task_clean[1:]
+                            break
+
+                # 5. Determine priority
+                low_task = task_clean.lower()
+                if any(w in low_task for w in ['critical', 'urgent', 'high priority', 'asap', 'blocker']):
                     priority = "High"
-                elif 'low' in task.lower() or 'optional' in task.lower():
+                elif any(w in low_task for w in ['low priority', 'optional', 'nice to have', 'when possible']):
                     priority = "Low"
-                action_items.append({
-                    "task": task,
-                    "owner": owner,
-                    "deadline": deadline,
-                    "priority": priority,
-                    "status": "Pending"
-                })
+                else:
+                    priority = "Medium"
 
+                dedup_key = f"{owner.lower()}::{task_clean.lower()}"
+                if dedup_key not in seen_tasks and len(task_clean) >= 5:
+                    seen_tasks.add(dedup_key)
+                    action_items.append({
+                        "task": task_clean,
+                        "owner": owner,
+                        "deadline": deadline,
+                        "priority": priority,
+                        "status": "Pending"
+                    })
+
+        # Fallback only when absolutely zero action items were detected
         if not action_items:
             action_items.append({
                 "task": "Review and circulate finalized meeting minutes",
-                "owner": "Team Lead",
+                "owner": attendees[0] if (attendees and len(attendees) > 0) else "Team Lead",
                 "deadline": "Next Meeting",
                 "priority": "Medium",
                 "status": "Pending"

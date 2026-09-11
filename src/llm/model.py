@@ -107,114 +107,61 @@ class LLMClient:
         if "Transcript:" in prompt:
             transcript = prompt.split("Transcript:", 1)[1].strip()
 
-        lines = [l.strip() for l in transcript.split('\n') if l.strip()]
-        
-        # 1. Header Information
-        title = "General Meeting"
-        date = "Today"
+        from src.preprocessing.transcript_cleaner import TranscriptCleaner
+        from src.extraction.action_items import ActionItemsExtractor
+        from src.extraction.decisions import DecisionsExtractor
+        from src.extraction.discussion_points import DiscussionExtractor
+
+        cleaner = TranscriptCleaner()
+        meta = cleaner.extract_metadata_from_header(transcript)
+        title = meta.get("title") or "Meeting Minutes"
+        date = meta.get("date") or "Today"
+        raw_attendees = list(meta.get("attendees", []))
+
+        # Discover speaker participants from transcript dialogue
+        turns = cleaner.parse_speaker_turns(transcript)
+        for t in turns:
+            spk = t.get("speaker", "").strip()
+            if spk and spk.lower() not in {'speaker', 'attendees', 'participants'} and len(spk) < 35:
+                raw_attendees.append(spk)
+
+        # Deduplicate attendees (merge short and full names)
         attendees = []
-        for l in lines[:15]:
-            low = l.lower()
-            if low.startswith(('meeting:', 'subject:', 'topic:')):
-                title = l.split(':', 1)[1].strip()
-            elif low.startswith(('date:', 'meeting date:')):
-                date = l.split(':', 1)[1].strip()
-            elif low.startswith(('attendees:', 'participants:', 'members:')):
-                raw = l.split(':', 1)[1].strip()
-                attendees = [a.strip() for a in re.split(r'[,;]', raw) if a.strip()]
-
-        # 2. Extract Discussion Points & Attendees
-        discussions = []
-        for l in lines:
-            m = re.match(r'^(?:\[\d{1,2}:\d{2}\]\s*)?([A-Za-z\s]+?):\s*(.+)$', l)
-            if m:
-                speaker = m.group(1).strip()
-                speech = m.group(2).strip()
-                if speaker not in attendees and len(speaker) < 30 and not speaker.lower().startswith(('decision', 'action', 'note')):
-                    attendees.append(speaker)
-                if len(speech) > 40 and not speech.lower().startswith(('action item', 'decision:')):
-                    discussions.append(f"{speaker} discussed: {speech}")
-            elif l.startswith(('-', '*', '1.', '2.', '3.')) and len(l) > 20:
-                clean_l = re.sub(r'^[-*\d\.\s]+', '', l)
-                discussions.append(clean_l)
-
-        if not discussions:
-            discussions = [l for l in lines if len(l) > 35][:5]
-
-        # 3. Decisions
-        decisions = []
-        for l in lines:
-            low = l.lower()
-            if 'decision:' in low or 'agreed that' in low or 'approved' in low or 'resolved to' in low or 'agreed on' in low:
-                dec_text = re.sub(r'^(?:.*decision:?\s*)', '', l, flags=re.IGNORECASE).strip()
-                if dec_text and dec_text not in decisions:
-                    decisions.append(dec_text)
-        if not decisions:
-            decisions.append("The project architecture and next phase milestones were reviewed and unanimously approved.")
-
-        # 4. Action Items, Owners, Deadlines
-        action_items = []
-        deadline_patterns = [
-            r'by\s+([A-Za-z]+\s+\d{1,2},?\s*\d{4})',
-            r'by\s+([A-Za-z]+day(?:\s+morning|\s+afternoon|\s+evening)?)',
-            r'by\s+([A-Za-z]+\s+\d{1,2}(?:th|st|nd|rd)?)',
-            r'due\s+([A-Za-z]+\s+\d{1,2})',
-            r'deadline\s+is\s+([A-Za-z]+\s+\d{1,2})'
-        ]
-        
-        for l in lines:
-            is_action = False
-            task = l
-            owner = "Unassigned"
-            deadline = "TBD"
-            priority = "Medium"
-
-            low = l.lower()
-            if 'action item' in low or 'to do' in low or 'will finalize' in low or 'assigned to' in low or 'to complete' in low or 'to design' in low:
-                is_action = True
-                clean_l = re.sub(r'^(?:.*action item:?\s*)', '', l, flags=re.IGNORECASE).strip()
-                task = clean_l
-
-            owner_match = re.match(r'^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:to|will|must|is assigned to)\s+(.+)$', task)
-            if owner_match:
-                owner = owner_match.group(1).strip()
-                task = owner_match.group(2).strip()
-                is_action = True
-
-            for dp in deadline_patterns:
-                dm = re.search(dp, task, re.IGNORECASE)
-                if dm:
-                    deadline = dm.group(1).strip()
+        for name in raw_attendees:
+            clean_name = name.strip()
+            if not clean_name or clean_name.lower() in {'speaker', 'attendees', 'participants', 'everyone', 'all', 'person 1', 'person 2', 'facilitator'}:
+                continue
+            is_sub = False
+            for i, existing in enumerate(attendees):
+                parts_clean = set(re.findall(r'\w+', clean_name.lower()))
+                parts_exist = set(re.findall(r'\w+', existing.lower()))
+                if parts_clean and parts_clean.issubset(parts_exist):
+                    is_sub = True
                     break
+                elif parts_exist and parts_exist.issubset(parts_clean):
+                    attendees[i] = clean_name
+                    is_sub = True
+                    break
+            if not is_sub:
+                attendees.append(clean_name)
 
-            if is_action:
-                if 'critical' in task.lower() or 'urgent' in task.lower() or 'high' in task.lower():
-                    priority = "High"
-                elif 'low' in task.lower() or 'optional' in task.lower():
-                    priority = "Low"
-                action_items.append({
-                    "task": task,
-                    "owner": owner,
-                    "deadline": deadline,
-                    "priority": priority,
-                    "status": "Pending"
-                })
+        # Discussions
+        discussions = DiscussionExtractor().extract(transcript)
 
-        if not action_items:
-            action_items.append({
-                "task": "Review generated meeting minutes and finalize milestone deliverables",
-                "owner": attendees[0] if attendees else "Team Lead",
-                "deadline": "Next Meeting",
-                "priority": "Medium",
-                "status": "Pending"
-            })
+        # Decisions
+        decisions = DecisionsExtractor().extract(transcript)
 
-        # 5. Executive Summary
+        # Action Items
+        action_items = ActionItemsExtractor().extract(transcript, attendees=attendees)
+
+        # Executive Summary synthesis
+        participants_str = ', '.join(attendees[:4]) if attendees else 'the project team'
+        summary_decisions = f" Decisions ratified included: {'; '.join(decisions[:2])}." if decisions else ""
         executive_summary = (
             f"The meeting '{title}' was convened to review core updates, technical specifications, and key deliverables. "
-            f"Key participants included {', '.join(attendees[:4]) if attendees else 'the project team'}. "
-            f"The session examined system design, pipeline requirements, and performance criteria. "
-            f"Decisions included: {'; '.join(decisions[:2])}. "
+            f"Key participants included {participants_str}. "
+            f"The session examined system design, pipeline requirements, and performance criteria."
+            f"{summary_decisions} "
             f"A total of {len(action_items)} action items were established with designated owners and delivery deadlines."
         )
 

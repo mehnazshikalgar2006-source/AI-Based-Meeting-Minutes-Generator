@@ -78,11 +78,13 @@ def evaluate_academic_sample():
     matched_deadlines = 0
 
     for ref in ref_actions:
+        ref_words = set(ref["task"].lower().split()) - {"and", "the", "in", "to", "for", "with", "a", "of"}
         for p in pred_actions:
             p_task = p.get("task", "").lower()
-            if any(w in p_task for w in ref["task"].lower().split()[:3]):
+            p_words = set(p_task.split())
+            if len(ref_words & p_words) >= 2:
                 matched_tasks += 1
-                if ref["owner"].lower() in p.get("owner", "").lower() or ref["owner"].lower() in p_task:
+                if ref["owner"].lower() in p.get("owner", "").lower() or p.get("owner", "").lower() in ref["owner"].lower():
                     matched_owners += 1
                 if "september" in p.get("deadline", "").lower() or "tbd" not in p.get("deadline", "").lower():
                     matched_deadlines += 1

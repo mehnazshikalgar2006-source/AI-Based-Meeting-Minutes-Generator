@@ -43,5 +43,87 @@ class TestExtraction(unittest.TestCase):
         points = self.discussion_extractor.extract(transcript)
         self.assertTrue(len(points) >= 1)
 
+    def test_compound_owners_and_explicit_deadlines(self):
+        transcript = (
+            "Action Item: Mehnaz and Dipika to prepare the project presentation slides by September 12, 2026.\n"
+            "Action Item: Prof. Sarita Byagar to review the final draft by Friday 5 PM."
+        )
+        actions = self.action_extractor.extract(transcript)
+        self.assertEqual(len(actions), 2)
+        
+        # Verify first action item
+        self.assertEqual(actions[0]["owner"], "Mehnaz and Dipika")
+        self.assertEqual(actions[0]["deadline"], "September 12, 2026")
+        self.assertNotIn("September 12, 2026", actions[0]["task"])
+        self.assertNotIn("Mehnaz and Dipika to", actions[0]["task"])
+        
+        # Verify second action item
+        self.assertEqual(actions[1]["owner"], "Prof. Sarita Byagar")
+        self.assertTrue("Friday" in actions[1]["deadline"])
+
+    def test_rejection_of_conversational_meta_discussions(self):
+        transcript = (
+            "Mehnaz: The pipeline comprises structured extraction of action items, decisions, and discussion points.\n"
+            "Prof: Let's make sure the action item extraction identifies responsible owners and strict deadlines.\n"
+            "Prof: Let's finalize the action items for this week:\n"
+            "Action Item: Dipika to design the PDF templates by September 8, 2026."
+        )
+        actions = self.action_extractor.extract(transcript)
+        # Only the real action item should be extracted, conversational meta mentions discarded
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["owner"], "Dipika")
+        self.assertEqual(actions[0]["deadline"], "September 8, 2026")
+
+    def test_speaker_commitment_extraction(self):
+        transcript = (
+            "[10:05] Mehnaz Shikalgar: I will build the evaluation benchmark by tomorrow EOD.\n"
+            "[10:10] Dipika Tupat: I will complete the export tests by Wednesday."
+        )
+        actions = self.action_extractor.extract(transcript)
+        self.assertEqual(len(actions), 2)
+        self.assertEqual(actions[0]["owner"], "Mehnaz Shikalgar")
+        self.assertTrue("tomorrow" in actions[0]["deadline"].lower())
+        self.assertEqual(actions[1]["owner"], "Dipika Tupat")
+        self.assertTrue("wednesday" in actions[1]["deadline"].lower())
+
+    def test_full_pipeline_zero_placeholders(self):
+        from src.llm.model import LLMClient
+        from src.llm.summarizer import MeetingSummarizer
+
+        transcript = (
+            "Meeting: AI Architecture & Roadmap Sync\n"
+            "Date: 2026-09-15\n"
+            "Attendees: Mehnaz Shikalgar, Dipika Tupat, Prof. Sarita Byagar\n\n"
+            "[10:00] Prof. Sarita Byagar: Welcome to the AI architecture review.\n"
+            "Decision: Approved Streamlit and SQLite architecture.\n"
+            "Action Item: Mehnaz to finalize RAG pipeline evaluation by September 18, 2026.\n"
+            "Action Item: Dipika to deliver word export module by September 20, 2026.\n"
+            "Action Item: Mehnaz and Dipika to prepare research report by September 22, 2026."
+        )
+        summarizer = MeetingSummarizer(LLMClient(provider="built-in-nlp"))
+        res = summarizer.process_transcript(transcript)
+
+        # Title checks
+        self.assertEqual(res["title"], "AI Architecture & Roadmap Sync")
+        self.assertNotIn(res["title"].lower(), ["meeting title", "general meeting", "untitled"])
+
+        # Date checks
+        self.assertEqual(res["date"], "2026-09-15")
+        self.assertNotEqual(res["date"], "Today")
+
+        # Attendees checks
+        self.assertIn("Mehnaz Shikalgar", res["attendees"])
+        self.assertIn("Dipika Tupat", res["attendees"])
+        self.assertIn("Prof. Sarita Byagar", res["attendees"])
+        self.assertNotIn("Facilitator", res["attendees"])
+        self.assertNotIn("Person 1", res["attendees"])
+
+        # Action items zero placeholder checks
+        self.assertEqual(len(res["action_items"]), 3)
+        for item in res["action_items"]:
+            self.assertNotIn(item["owner"], ["Unassigned", "TBD", ""])
+            self.assertNotIn(item["deadline"], ["TBD", "N/A", ""])
+            self.assertTrue(len(item["task"]) >= 5)
+
 if __name__ == "__main__":
     unittest.main()

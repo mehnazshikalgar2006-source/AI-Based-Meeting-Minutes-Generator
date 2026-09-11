@@ -39,40 +39,117 @@ class TranscriptCleaner:
 
     def extract_metadata_from_header(self, text: str) -> Dict[str, Any]:
         metadata = {"title": "", "date": "", "time": "", "attendees": []}
-        lines = text.split('\n')
-        for line in lines[:20]:
-            lower = line.lower()
-            if lower.startswith(('meeting:', 'subject:', 'topic:', 'title:')):
-                metadata['title'] = line.split(':', 1)[1].strip()
-            elif lower.startswith(('date:', 'meeting date:')):
-                metadata['date'] = line.split(':', 1)[1].strip()
-            elif lower.startswith(('time:', 'duration:')):
-                metadata['time'] = line.split(':', 1)[1].strip()
-            elif lower.startswith(('attendees:', 'participants:', 'members:')):
-                attendees_raw = line.split(':', 1)[1].strip()
-                raw_list = re.split(r'[,;]', attendees_raw)
-                metadata['attendees'] = [a.strip() for a in raw_list if a.strip()]
+        lines = [l.strip() for l in text.split('\n') if l.strip()]
+        
+        collecting_attendees = False
+        
+        for line in lines[:25]:
+            clean_l = re.sub(r'^[#*_\-\s]+', '', line).strip()
+            clean_l = re.sub(r'[*_]+$', '', clean_l).strip()
+            lower = clean_l.lower()
+            
+            if collecting_attendees:
+                if lower.startswith(('date:', 'meeting date:', 'time:', 'duration:', 'meeting:', 'subject:', 'topic:', 'title:', 'agenda:', 'discussion:', 'decision:')) or re.match(r'^(?:\[\d{1,2}:\d{2}\]|\w+\s*:)', clean_l):
+                    collecting_attendees = False
+                elif clean_l.startswith(('-', '*', '•')) or re.match(r'^\d+\.', clean_l):
+                    att = re.sub(r'^[-*•\d\.\s]+', '', clean_l).strip()
+                    att_clean = re.sub(r'\s*\([^)]*\)', '', att).strip()
+                    if att_clean and att_clean not in metadata['attendees'] and len(att_clean) < 45:
+                        metadata['attendees'].append(att_clean)
+                    continue
+
+            if lower.startswith(('meeting:', 'subject:', 'topic:', 'title:', 'meeting title:', 'meeting name:')):
+                val = clean_l.split(':', 1)[1].strip()
+                val = re.sub(r'^[*_]+|[*_]+$', '', val).strip()
+                if val:
+                    metadata['title'] = val
+            elif lower.startswith(('date:', 'meeting date:', 'date & time:', 'date/time:')):
+                val = clean_l.split(':', 1)[1].strip()
+                val = re.sub(r'^[*_]+|[*_]+$', '', val).strip()
+                if val:
+                    metadata['date'] = val
+            elif lower.startswith(('time:', 'duration:', 'meeting time:')):
+                val = clean_l.split(':', 1)[1].strip()
+                val = re.sub(r'^[*_]+|[*_]+$', '', val).strip()
+                if val:
+                    metadata['time'] = val
+            elif lower.startswith(('attendees:', 'participants:', 'members:', 'present:')):
+                val = clean_l.split(':', 1)[1].strip()
+                val = re.sub(r'^[*_]+|[*_]+$', '', val).strip()
+                if val:
+                    raw_list = re.split(r'[,;]', val)
+                    for a in raw_list:
+                        a_clean = re.sub(r'\s*\([^)]*\)', '', a).strip()
+                        if a_clean and a_clean not in metadata['attendees']:
+                            metadata['attendees'].append(a_clean)
+                else:
+                    collecting_attendees = True
+
+        # Fallback date detection if not matched via explicit prefix
+        if not metadata['date']:
+            for line in lines[:15]:
+                date_match = re.search(
+                    r'\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|(?:January|February|March|April|May|June|July|August|September|October|November|December|[A-Z][a-z]{2})\s+\d{1,2}(?:st|nd|rd|th)?,?\s*\d{4})\b',
+                    line,
+                    re.IGNORECASE
+                )
+                if date_match:
+                    metadata['date'] = date_match.group(0).strip()
+                    break
+
+        # Fallback time detection
+        if not metadata['time']:
+            for line in lines[:15]:
+                time_match = re.search(
+                    r'\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?(?:\s*[-–to]+\s*\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)?\b',
+                    line
+                )
+                if time_match and not line.strip().startswith('['):
+                    metadata['time'] = time_match.group(0).strip()
+                    break
+
+        # Fallback title detection from first prominent line if not already found
+        if not metadata['title'] and lines:
+            first_line = lines[0].strip()
+            clean_first = re.sub(r'^[#*_\-\s]+', '', first_line).strip()
+            first_lower = clean_first.lower()
+            if not any(first_lower.startswith(k) for k in ['date:', 'time:', 'attendees:', 'participants:', '[']) and len(clean_first) < 80 and ':' not in clean_first:
+                metadata['title'] = clean_first
+
         return metadata
 
     def parse_speaker_turns(self, text: str) -> List[Dict[str, str]]:
         lines = text.split('\n')
         turns = []
         current_turn = None
+        skip_prefixes = [
+            'date:', 'time:', 'meeting:', 'subject:', 'topic:', 'title:',
+            'attendees:', 'participants:', 'members:', 'present:', 'agenda:'
+        ]
+        non_speaker_names = {
+            'action item', 'action items', 'decision', 'decisions', 'note', 'notes',
+            'attendees', 'participants', 'members', 'present', 'agenda', 'summary',
+            'executive summary', 'task', 'tasks', 'todo'
+        }
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-            if any(line.lower().startswith(k) for k in ['date:', 'time:', 'meeting:', 'subject:', 'attendees:']):
+            clean_line = re.sub(r'^[#*_\-\s]+', '', line).strip()
+            clean_lower = clean_line.lower()
+            if any(clean_lower.startswith(k) for k in skip_prefixes):
                 continue
             match = self.timestamp_speaker_regex.match(line)
             if match:
                 timestamp = match.group(1) or ""
                 speaker = match.group(2).strip()
                 statement = match.group(3).strip()
-                if len(speaker) < 40 and not speaker.lower().startswith(('action item', 'decision', 'note')):
+                speaker_clean = re.sub(r'^[*_\-\s]+|[*_\-\s]+$', '', speaker).strip()
+                speaker_clean = re.sub(r'\s*\([^)]*\)', '', speaker_clean).strip()
+                if len(speaker_clean) < 40 and speaker_clean.lower() not in non_speaker_names and not speaker_clean.lower().startswith(('action item', 'decision', 'note')):
                     if current_turn:
                         turns.append(current_turn)
-                    current_turn = {"timestamp": timestamp, "speaker": speaker, "statement": statement}
+                    current_turn = {"timestamp": timestamp, "speaker": speaker_clean, "statement": statement}
                     continue
             if current_turn:
                 current_turn['statement'] += " " + line
